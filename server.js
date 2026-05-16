@@ -7,8 +7,8 @@ require('dotenv').config();
 const flightRoutes = require('./routes/flightRoutes');
 const ticketRoutes = require('./routes/ticketRoutes.js');
 const adminRoutes  = require('./routes/adminRoutes');
-const City = require('./models/City'); // Ensure City model
-const userRoutes = require('./routes/userRoutes'); // Ensure user routes
+const City = require('./models/City');
+const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 // Middleware

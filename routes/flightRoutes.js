@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Flight = require('../models/Flight');
+const Ticket = require('../models/Ticket');
 const authGuard = require('../middleware/authGuard');
 const { findDirectFlights, findConnectedFlights } = require('../services/graphService');
 
@@ -85,6 +86,17 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// GET /api/flights/:id/seats - get taken seats for a flight
+router.get('/:id/seats', async (req, res) => {
+  try {
+    const tickets = await Ticket.find({ flight_id: req.params.id });
+    const takenSeats = tickets.map(t => t.seat_number);
+    res.json({ takenSeats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/flights/:id - single flight
 router.get('/:id', async (req, res) => {
   try {
@@ -157,18 +169,6 @@ router.delete('/:id', authGuard, async (req, res) => {
     const flight = await Flight.findByIdAndDelete(req.params.id);
     if (!flight) return res.status(404).json({ error: 'Flight not found.' });
     res.json({ message: 'Flight deleted successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/flights/:id/seats - get taken seats for a flight
-router.get('/:id/seats', async (req, res) => {
-  try {
-    const Ticket = require('../models/Ticket');
-    const tickets = await Ticket.find({ flight_id: req.params.id });
-    const takenSeats = tickets.map(t => t.seat_number);
-    res.json({ takenSeats });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

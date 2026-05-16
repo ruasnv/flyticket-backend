@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
     if (!flight) return res.status(404).json({ error: 'Flight not found.' });
     if (flight.seats_available <= 0) return res.status(400).json({ error: 'No seats available on this flight.' });
 
-    // Assign seat number
+   // Validate and assign seat number
     const bookedSeats = await Ticket.find({ flight_id });
     const takenSeats  = bookedSeats.map(t => t.seat_number);
 
