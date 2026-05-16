@@ -32,16 +32,13 @@ Built with Node.js, Express, and MongoDB for Dynamic Web Development Course Assi
 ```
 
 3. Create a `.env` file in the root directory:
-
+```
 PORT=5000
-
 MONGO_URI=mongodb://localhost:27017/flyticket
-
 SESSION_SECRET=flyticket_super_secret_key
-
 ADMIN_USERNAME=admin
-
 ADMIN_PASSWORD=admin123
+```
 
 4. Seed the database (cities + admin account):
 ```bash
@@ -132,18 +129,13 @@ mongorestore --db flyticket ./dump/flyticket
 ```
 
 ## Project Structure
+```
 backend/
-
 ├── models/          # Mongoose models (City, Flight, Ticket, Admin, User)
-
 ├── routes/          # Express route handlers
-
 ├── middleware/      # Auth guard middleware
-
 ├── services/        # Graph service for connected flights
-
 ├── seed.js          # Database seeder (cities + admin)
-
 ├── server.js        # App entry point
-
 └── .env             # Environment variables (not committed)
+```
