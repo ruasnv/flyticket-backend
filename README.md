@@ -126,10 +126,17 @@ mongorestore --db flyticket ./dump/flyticket
 
 ## Project Structure
 backend/
+
 ├── models/          # Mongoose models (City, Flight, Ticket, Admin, User)
+
 ├── routes/          # Express route handlers
+
 ├── middleware/      # Auth guard middleware
+
 ├── services/        # Graph service for connected flights
+
 ├── seed.js          # Database seeder (cities + admin)
+
 ├── server.js        # App entry point
+
 └── .env             # Environment variables (not committed)
