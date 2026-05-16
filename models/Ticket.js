@@ -6,7 +6,8 @@ const ticketSchema = new mongoose.Schema({
   passenger_surname: { type: String, required: true },
   passenger_email:   { type: String, required: true },
   flight_id:         { type: mongoose.Schema.Types.ObjectId, ref: 'Flight', required: true },
-  seat_number:       { type: String }
+  seat_number:       { type: String },
+  user_id:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

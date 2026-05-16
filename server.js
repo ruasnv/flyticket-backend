@@ -8,17 +8,26 @@ const flightRoutes = require('./routes/flightRoutes');
 const ticketRoutes = require('./routes/ticketRoutes.js');
 const adminRoutes  = require('./routes/adminRoutes');
 const City = require('./models/City'); // Ensure City model
-
+const userRoutes = require('./routes/userRoutes'); // Ensure user routes
 const app = express();
 
 // Middleware
-app.use(cors({ origin: 'http://127.0.0.1:5500', credentials: true })); // VS Code Live Server port
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 2 } // 2 hours
+  cookie: { 
+    maxAge: 1000 * 60 * 60 * 2,
+    sameSite: 'lax',
+    secure: false
+  }
 }));
 
 // Routes
@@ -33,16 +42,17 @@ app.get('/api/cities', async (req, res) => {
 app.use('/api/flights', flightRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/admin',   adminRoutes);
+app.use('/api/users',   userRoutes);
 
 // Health check
-app.get('/', (req, res) => res.json({ message: 'FlyTicket API is running ✈️' }));
+app.get('/', (req, res) => res.json({ message: 'FlyTicket API is running' }));
 
 // Connect to MongoDB then start server
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
-    console.log('✅ MongoDB connected');
+    console.log('MongoDB connected');
     app.listen(process.env.PORT, () => {
-      console.log(`✅ Server running on http://localhost:${process.env.PORT}`);
+      console.log(`Server running on http://localhost:${process.env.PORT}`);
     });
   })
-  .catch(err => console.error('❌ DB connection failed:', err));
+  .catch(err => console.error('DB connection failed:', err));

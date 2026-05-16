@@ -8,47 +8,47 @@ const { findDirectFlights, findConnectedFlights } = require('../services/graphSe
 async function validateFlightRules(from_city, to_city, departure_time, arrival_time, excludeId = null) {
   const errors = [];
 
-  // Same city check
   if (from_city.toString() === to_city.toString()) {
-    errors.push('Departure and arrival city cannot be the same.');
+    errors.push('Departure and arrival cities cannot be the same.');
   }
 
-  // Arrival must be after departure
-  if (new Date(arrival_time) <= new Date(departure_time)) {
-    errors.push('Arrival time must be after departure time.');
+  const dep = new Date(departure_time);
+  const arr = new Date(arrival_time);
+
+  if (isNaN(dep.getTime()) || isNaN(arr.getTime())) {
+    errors.push('Invalid departure or arrival time.');
+    return errors; // stop here, further checks will fail
   }
 
-  const depHourStart = new Date(departure_time);
-  depHourStart.setMinutes(0, 0, 0);
-  const depHourEnd = new Date(departure_time);
-  depHourEnd.setMinutes(59, 59, 999);
+  if (arr <= dep) {
+    errors.push(`Arrival time (${arr.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}) must be after departure time (${dep.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}).`);
+  }
 
-  const arrHourStart = new Date(arrival_time);
-  arrHourStart.setMinutes(0, 0, 0);
-  const arrHourEnd = new Date(arrival_time);
-  arrHourEnd.setMinutes(59, 59, 999);
+  const depHourStart = new Date(dep); depHourStart.setMinutes(0, 0, 0);
+  const depHourEnd   = new Date(dep); depHourEnd.setMinutes(59, 59, 999);
+  const arrHourStart = new Date(arr); arrHourStart.setMinutes(0, 0, 0);
+  const arrHourEnd   = new Date(arr); arrHourEnd.setMinutes(59, 59, 999);
 
-  // Build exclude filter for updates
   const exclude = excludeId ? { _id: { $ne: excludeId } } : {};
 
-  // Rule: no two flights depart from same city in same hour
   const depConflict = await Flight.findOne({
     ...exclude,
     from_city,
     departure_time: { $gte: depHourStart, $lte: depHourEnd }
-  });
+  }).populate('from_city');
+
   if (depConflict) {
-    errors.push(`A flight already departs from this city at this hour (${depConflict.flight_id}).`);
+    errors.push(`Flight ${depConflict.flight_id} already departs from ${depConflict.from_city.city_name} at ${dep.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}. No two flights can depart from the same city in the same hour.`);
   }
 
-  // Rule: no two flights arrive at same city in same hour
   const arrConflict = await Flight.findOne({
     ...exclude,
     to_city,
     arrival_time: { $gte: arrHourStart, $lte: arrHourEnd }
-  });
+  }).populate('to_city');
+
   if (arrConflict) {
-    errors.push(`A flight already arrives at this city at this hour (${arrConflict.flight_id}).`);
+    errors.push(`Flight ${arrConflict.flight_id} already arrives at ${arrConflict.to_city.city_name} at ${arr.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}. No two flights can arrive at the same city in the same hour.`);
   }
 
   return errors;
@@ -118,9 +118,15 @@ router.post('/', authGuard, async (req, res) => {
     await flight.save();
     res.status(201).json(flight);
   } catch (err) {
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue)[0];
+      const value = err.keyValue[field];
+      return res.status(400).json({ 
+        errors: [`A flight with ${field} "${value}" already exists. Please use a unique Flight ID.`] 
+      });
+    }
     res.status(500).json({ error: err.message });
-  }
-});
+  }});
 
 // PUT /api/flights/:id - update flight (admin only)
 router.put('/:id', authGuard, async (req, res) => {
@@ -133,9 +139,16 @@ router.put('/:id', authGuard, async (req, res) => {
     const flight = await Flight.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!flight) return res.status(404).json({ error: 'Flight not found.' });
     res.json(flight);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+   } catch (err) {
+      if (err.code === 11000) {
+        const field = Object.keys(err.keyValue)[0];
+        const value = err.keyValue[field];
+        return res.status(400).json({
+          errors: [`A flight with ${field} "${value}" already exists. Please use a unique Flight ID.`]
+        });
+      }
+      res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE /api/flights/:id - delete flight (admin only)
@@ -144,6 +157,18 @@ router.delete('/:id', authGuard, async (req, res) => {
     const flight = await Flight.findByIdAndDelete(req.params.id);
     if (!flight) return res.status(404).json({ error: 'Flight not found.' });
     res.json({ message: 'Flight deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/flights/:id/seats - get taken seats for a flight
+router.get('/:id/seats', async (req, res) => {
+  try {
+    const Ticket = require('../models/Ticket');
+    const tickets = await Ticket.find({ flight_id: req.params.id });
+    const takenSeats = tickets.map(t => t.seat_number);
+    res.json({ takenSeats });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

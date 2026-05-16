@@ -19,7 +19,18 @@ router.post('/', async (req, res) => {
     if (flight.seats_available <= 0) return res.status(400).json({ error: 'No seats available on this flight.' });
 
     // Assign seat number
-    const seat_number = `${String.fromCharCode(65 + Math.floor((flight.seats_total - flight.seats_available) / 6))}${((flight.seats_total - flight.seats_available) % 6) + 1}`;
+    const bookedSeats = await Ticket.find({ flight_id });
+    const takenSeats  = bookedSeats.map(t => t.seat_number);
+
+    let seat_number = req.body.seat_number;
+    if (seat_number && takenSeats.includes(seat_number)) {
+      return res.status(400).json({ error: `Seat ${seat_number} is already taken. Please select another.` });
+    }
+    if (!seat_number) {
+      // Auto-assign if none selected
+      const idx = flight.seats_total - flight.seats_available;
+      seat_number = `${String.fromCharCode(65 + Math.floor(idx / 6))}${(idx % 6) + 1}`;
+    }
 
     const ticket = new Ticket({
       ticket_id: uuidv4(),
@@ -27,9 +38,10 @@ router.post('/', async (req, res) => {
       passenger_surname,
       passenger_email,
       flight_id,
-      seat_number
+      seat_number,
+      user_id: req.session?.userId || null
     });
-
+    
     await ticket.save();
 
     // Decrement available seats
@@ -37,7 +49,10 @@ router.post('/', async (req, res) => {
     await flight.save();
 
     // Return ticket with flight details populated
-    const populated = await ticket.populate('flight_id');
+    const populated = await ticket.populate({
+      path: 'flight_id',
+      populate: { path: 'from_city to_city' }
+    });
     res.status(201).json(populated);
   } catch (err) {
     res.status(500).json({ error: err.message });
