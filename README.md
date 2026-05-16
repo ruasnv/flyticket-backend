@@ -1,8 +1,5 @@
-backend/README.md
-markdown# FlyTicket — Backend
-
 REST API for the FlyTicket airline booking application.
-Built with Node.js, Express, and MongoDB.
+Built with Node.js, Express, and MongoDB for Dynamic Web Development Course Assignment 2026 Spring Term.
 
 ## Technologies Used
 
