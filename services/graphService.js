@@ -1,6 +1,8 @@
 const Flight = require('../models/Flight');
-require('../models/City'); // Ensure City model is registered for population
+require('../models/City'); // City model is needed for population in queries
 
+// Layover constraints in milliseconds
+// Minimum layover: 45 minutes, Maximum layover: 6 hours
 const MIN_LAYOVER_MS = 45 * 60 * 1000;      // 45 minutes
 const MAX_LAYOVER_MS = 6 * 60 * 60 * 1000;  // 6 hours
 
@@ -8,6 +10,7 @@ const MAX_LAYOVER_MS = 6 * 60 * 60 * 1000;  // 6 hours
  * Find all direct flights matching from/to/date
  */
 async function findDirectFlights(fromCityId, toCityId, date) {
+  // Define the start and end of the day for the given date to filter flights
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   const end = new Date(date);
@@ -22,10 +25,11 @@ async function findDirectFlights(fromCityId, toCityId, date) {
 }
 
 /**
- * Find connected flights (2-leg journeys) for a given date.
- * Istanbul → X → Ankara, where layover is between 45min and 6h.
+ * Find connected flights (2-jump journeys) for a given date.
+ * Where layover is between 45min and 6h.
  */
 async function findConnectedFlights(fromCityId, toCityId, date) {
+  // Define the start and end of the day for the given date to filter flights
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
   const end = new Date(date);
@@ -47,18 +51,20 @@ async function findConnectedFlights(fromCityId, toCityId, date) {
 
   const connections = [];
 
+  // Match leg1 and leg2 based on intermediate city and layover constraints
   for (const leg1 of leg1Flights) {
     // Skip if leg1 already goes directly to destination
     if (leg1.to_city._id.equals(toCityId)) continue;
 
     for (const leg2 of leg2Flights) {
-      // Intermediate city must match
+      // Check if leg1's destination matches leg2's origin (aka. the intermediate city)
       if (!leg1.to_city._id.equals(leg2.from_city._id)) continue;
 
       const layover = leg2.departure_time - leg1.arrival_time;
 
       // Layover window check
       if (layover >= MIN_LAYOVER_MS && layover <= MAX_LAYOVER_MS) {
+        // Valid connection found, add to results with combined info
         connections.push({
           type: 'connected',
           leg1,
