@@ -5,6 +5,11 @@ const Ticket  = require('../models/Ticket');
 const Flight  = require('../models/Flight');
 
 // POST /api/users/register
+// Validations: all fields required, password length, unique email
+// On success: create user, start session, return name
+// This route registers a new user. It checks that all required fields are provided,
+// that the password is at least 6 characters long, and that the email isn't already in use. 
+// If everything is valid, it creates the user, starts a session, and returns a success message with the user's name.
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -29,6 +34,11 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/users/login
+// Validations: email and password required, user exists, password matches
+// On success: start session, return name
+// This route logs in an existing user. It checks that the email and password are provided,
+// that a user with the given email exists, and that the password matches.
+// If successful, it starts a session and returns a success message with the user's name.
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -38,6 +48,7 @@ router.post('/login', async (req, res) => {
     const match = await user.comparePassword(password);
     if (!match) return res.status(401).json({ error: 'Invalid email or password.' });
 
+    // Start session to keep user logged in
     req.session.userId   = user._id;
     req.session.userName = user.name;
     res.json({ message: 'Login successful.', name: user.name });
@@ -47,12 +58,16 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/users/logout
+// This route logs out the user by destroying the session. It returns a success message upon completion.
 router.post('/logout', (req, res) => {
+  // Destroy session to log out
   req.session.destroy();
   res.json({ message: 'Logged out.' });
 });
 
 // GET /api/users/me
+// This route checks if the user is currently logged in by verifying the session.
+// If the user is logged in, it returns an object with loggedIn: true, along with the user's name and ID.
 router.get('/me', (req, res) => {
   if (req.session?.userId) {
     return res.json({ loggedIn: true, name: req.session.userName, id: req.session.userId });
@@ -61,6 +76,9 @@ router.get('/me', (req, res) => {
 });
 
 // GET /api/users/tickets — get logged in user's tickets
+// This route retrieves all tickets for the currently logged-in user. It checks if the user is logged in,
+// and if so, it queries the Ticket model for tickets associated with the user's ID.
+// The results are populated with flight details and returned in descending order of creation.
 router.get('/tickets', async (req, res) => {
   try {
     if (!req.session?.userId)
@@ -77,8 +95,12 @@ router.get('/tickets', async (req, res) => {
 });
 
 // DELETE /api/users/tickets/:id — user cancels their own ticket
+// This route allows a logged-in user to cancel one of their tickets. It checks if the user is logged in,
+// verifies that the ticket exists and belongs to the user, restores the seat availability for the associated flight,
+// and then deletes the ticket. A success message is returned upon completion.
 router.delete('/tickets/:id', async (req, res) => {
   try {
+    // Check if user is logged in
     if (!req.session?.userId)
       return res.status(401).json({ error: 'Please log in.' });
 
